@@ -12,6 +12,11 @@
       from pathlib import Path
    7. f1-score:
       from sklearn.metrics import f1_score
+   8. 告诉rnn不要处理padding字符产生的embedding_dim维数据：
+      from torch.nn.utils.rnn import (
+         pack_padded_sequence,
+         pad_packed_sequence,
+      )
 
 
 2. 常用指令：
@@ -44,6 +49,10 @@
 
          with label_to_id_json_path.open('r',encoding='utf-8') as file:
             label_to_id = json.load(file)
+   9. 构造rnn:
+         rnn = nn.RNN(input_size=embedding_dim,hidden_size=hidden_size,
+                  num_layers=3,batch_first=True,
+                  nonlinearity='tanh')
       
 
 3. 修改vscode的运行目录：
