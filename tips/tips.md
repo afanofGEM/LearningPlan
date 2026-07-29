@@ -53,7 +53,16 @@
          rnn = nn.RNN(input_size=embedding_dim,hidden_size=hidden_size,
                   num_layers=3,batch_first=True,
                   nonlinearity='tanh')
+   10. 将dataframe保存csv:
+         class_distribution.to_csv(class_distribution_path,index=False,
+                              encoding='utf-8')
+   11. 保存与加载sklearn的模型
+         import joblib
+         model_path = outputs_path / "model.joblib"
+         model = results["model"]
+         joblib.dump(model, model_path)
       
+         model = joblib.load(model_path)
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：
