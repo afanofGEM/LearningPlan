@@ -1,0 +1,2 @@
+text,true_label,predicted_label,confidence,possible_reason
+周末开始银行验证码一直无法接收，能不能帮我恢复正常。,信号问题,网络故障,0.3727,网络故障与信号问题存在相似词，例如网络、断开、无法连接

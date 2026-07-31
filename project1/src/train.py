@@ -157,6 +157,8 @@ def run_experiment(data,c_value,max_iter,random_state):
     print('模型训练完成')
 
     eval_predictions = model.predict(eval_data)
+    '''predictions是“保存字符串类别标签的一维 NumPy 数组'''
+    
     metrics = evaluate(data['eval_labels'],eval_predictions)
 
     return {
@@ -200,12 +202,12 @@ def save_results(results):
          )
 
     # 3.保存验证集指标
-    metrics_path = outputs_path / 'metrics.json'
+    eval_metrics_path = outputs_path / 'eval_metrics.json'
     metrics = results['metrics']
-    with metrics_path.open('w',encoding='utf-8') as metrics_file:   
+    with eval_metrics_path.open('w',encoding='utf-8') as eval_metrics_file:   
          json.dump(
             metrics,
-            metrics_file,
+            eval_metrics_file,
             ensure_ascii=False, # 写中文的格式
             indent=2,# 缩进2格
          )

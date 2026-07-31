@@ -63,6 +63,14 @@
          joblib.dump(model, model_path)
       
          model = joblib.load(model_path)
+   12. TF-IDF的训练集训练编码与验证集、测试集的编码：
+         # 对训练集数据编码
+         train_features = tfidf.fit_transform(data['train_texts'])
+         # 用训练集的词典对验证集编码
+         eval_features = tfidf.transform(data['eval_texts'])
+   13. 对DataFrame进行排序：
+         error_cases = (error_cases.sort_values(by="confidence",ascending=False)
+         .reset_index(drop=True))
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：
