@@ -63,14 +63,23 @@
          joblib.dump(model, model_path)
       
          model = joblib.load(model_path)
-   12. TF-IDF的训练集训练编码与验证集、测试集的编码：
+   12. 创建TF-IDF编码器：
+         from sklearn.feature_extraction.text import TfidfVectorizer
+         tfidf = TfidfVectorizer(analyzer='char',ngram_range=(1,2))
+   13. TF-IDF的训练集训练编码与验证集、测试集的编码：
          # 对训练集数据编码
          train_features = tfidf.fit_transform(data['train_texts'])
          # 用训练集的词典对验证集编码
          eval_features = tfidf.transform(data['eval_texts'])
-   13. 对DataFrame进行排序：
+   14. 对DataFrame进行排序：
          error_cases = (error_cases.sort_values(by="confidence",ascending=False)
          .reset_index(drop=True))
+   15. 创建GridSearchCV
+         grid_search_cv = GridSearchCV(estimator=pipeline,
+                                    param_grid=params_range,# 使用宏平均F1选择最佳参数
+                                    scoring="f1_macro",cv=predefined_split,n_jobs=-1,
+                                    # 选择最佳参数后,使用训练集 + 验证集重新训练最终模型
+                                    refit=True)
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：

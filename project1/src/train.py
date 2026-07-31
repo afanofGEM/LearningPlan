@@ -31,27 +31,6 @@ def prepare_data(train_path,eval_path,test_path):
     }
 
 
-# 2.构建TF-IDF特征：
-def build_tfidf(data):
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    tfidf = TfidfVectorizer(analyzer='char',ngram_range=(1,2))
-
-    # 对训练集数据编码
-    train_features = tfidf.fit_transform(data['train_texts'])
-
-    # 用训练集的词典对验证集编码
-    eval_features = tfidf.transform(data['eval_texts'])
-
-    print("\n训练集 TF-IDF 形状：",train_features.shape)
-    print("验证集 TF-IDF 形状：",eval_features.shape)
-
-    return {
-        "tfidf": tfidf,
-        "train_features": train_features,
-        "eval_features": eval_features
-    }
-
-
 # 3.评价模型
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
@@ -136,38 +115,92 @@ def evaluate(labels,predictions):
 
 
 # 4.训练过程,输入的data而不是路径
-def run_experiment(data,c_value,max_iter,random_state):
-    dataset = build_tfidf(data)
-    '''{
-        "tfidf": tfidf,
-        "train_features": train_features,
-        "eval_features": eval_features
-    }data经历了从list到编码list'''
+def run_experiment(data,max_iter,random_state):
+    '''data:
+    {
+        "train_texts": train_texts,
+        "train_labels": train_labels,
+        "eval_texts": eval_texts,
+        "eval_labels": eval_labels,
+        "test_texts":test_texts,
+        "test_labels":test_labels
+    }'''
+    # GridSearchCV 参数网络 搜索 交叉验证：通过训练和验证集来搜索参数与超参数的工具
 
-    # 这是全部的训练集数据
-    train_data = dataset['train_features']
-    eval_data = dataset['eval_features']
+    # 1.GridSearCV的数据准备部分
+    # 1.1 GridSearchCV需要完整的训练集+验证集
+    search_texts = data['train_texts'] + data['eval_texts']
+    search_labels = data['train_labels'] + data['eval_labels']
 
+    # 1.2 GridSearchCV需要通过索引告诉它哪些是训练集，哪些是验证集
+    index = [-1] * len(data['train_texts']) + [0] * len(data['eval_texts'])
+    from sklearn.model_selection import GridSearchCV,PredefinedSplit
+    predefined_split = PredefinedSplit(index)
+
+    # 2.GridSearchCV的工作流定义部分
+    # 2.1 创建Pipeline
+    from sklearn.pipeline import Pipeline
+    from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.linear_model import LogisticRegression
-    model = LogisticRegression(C=c_value,max_iter = max_iter,random_state=random_state) 
-    '''C控制模型对复杂程度的限制，也就是正则化强度的倒数
-        max_iter表示训练的轮数'''
+    pipeline = Pipeline(steps=[('tfidf',TfidfVectorizer(analyzer='char',
+                                                        ngram_range=(1,2))),
+                               ('model',LogisticRegression(
+                                                            max_iter=max_iter,
+                                                            solver="lbfgs",
+                                                            random_state=random_state))])
+    '''lbfgs 会不断寻找让损失函数更小的参数，是 scikit-learn 逻辑回归的默认求解器'''
 
-    model.fit(train_data,data['train_labels'])
-    print('模型训练完成')
+    # 3.GridSearchCV的参数范围
+    # 因为LogisticRegression位于Pipeline的model步骤中，所以参数名称需要写成model__参数名
+    params_range = {
+        'model__C':[0.01,0.1,1,10,100],
+        'model__class_weight':[None,'balanced']
+    }
 
-    eval_predictions = model.predict(eval_data)
-    '''predictions是“保存字符串类别标签的一维 NumPy 数组'''
+    # 4.创建GridSearchCV
+    grid_search_cv = GridSearchCV(estimator=pipeline,
+                               param_grid=params_range,# 使用宏平均F1选择最佳参数
+                               scoring="f1_macro",cv=predefined_split,n_jobs=-1,
+                               # 选择最佳参数后,不使用训练集 + 验证集重新训练最终模型
+                               refit=False)
     
-    metrics = evaluate(data['eval_labels'],eval_predictions)
+    # 5.开始寻找参数
+    grid_search_cv.fit(X=search_texts,y=search_labels)
+
+    # 6.得到最优参数
+    best_c = grid_search_cv.best_params_["model__C"]
+    best_class_weight = grid_search_cv.best_params_["model__class_weight"]
+    best_f1_score = grid_search_cv.best_score_
+
+    # 7.使用最优超参数再次创建模型，进行一次train+eval训练
+    best_pipeline = Pipeline(steps=[('tfidf',TfidfVectorizer(analyzer='char',
+                                                        ngram_range=(1,2))),
+                               ('model',LogisticRegression(
+                                                            max_iter=max_iter,
+                                                            solver="lbfgs",
+                                                            random_state=random_state,
+                                                            C=best_c,
+                                                            class_weight=best_class_weight))])
+
+    '''因为确定了超参数，所以不需要GridSearchCV'''
+    best_pipeline.fit(X=search_texts,y=search_labels)
+
+    # 10.取模型和TF-IDF
+    best_tfidf = best_pipeline.named_steps["tfidf"]
+    best_model = best_pipeline.named_steps["model"]
 
     return {
-        'tfidf':dataset['tfidf'],
-        'model':model,
-        'metrics':metrics,
+        'tfidf':best_tfidf,
+        'model':best_model,
+        'metrics':
+        {
+            'best_eval_f1_score':best_f1_score
+        },
         'model_conf':{
-            'c-value':c_value,
+            'c-value':best_c,
+            'class_weight':best_class_weight,
             'max_iter':max_iter,
+            'solver':"lbfgs",
             'random_state':random_state,
         },
         'tfidf_conf':{
@@ -235,23 +268,15 @@ def main():
         "test_labels":test_labels
     }'''
 
-    # dataset = build_tfidf(data)
-    '''{
-        "tfidf": tfidf,
-        "train_features": train_features,
-        "eval_features": eval_features
-    }'''
-
     random_state = 15
     max_iter = 1000
-    c_value = 1.0
-    results = run_experiment(data,c_value,max_iter,random_state) #内部会转成dataset
+    results = run_experiment(data,max_iter,random_state) #内部会转成dataset
     '''{
         'tfidf':dataset['tfidf'],
         'model':model,
         'metrics':metrics,
         'model_conf':{
-            'c-value':c_value,
+            'c_value':c_value,
             'max_iter':max_iter,
             'random_state':random_state,
         },
