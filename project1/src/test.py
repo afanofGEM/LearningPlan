@@ -22,15 +22,15 @@ import pandas as pd
 import joblib
 def prepare_data_model(test_path,model_path,tfidf_path):
 
-    test_data = pd.read_csv(test_path)
-    test_texts = test_data['text'].tolist()
-    test_labels = test_data['label'].tolist()
+    test_file = pd.read_csv(test_path)
 
     model = joblib.load(model_path)
     tfidf = joblib.load(tfidf_path)
+
+    '''train的prepare_data是返回list形式的train_texts/labels,eval_texts/labels
+    这里的prepare_data_model是返回dataframe形式的test_file,以及model和tfidf'''
     return {
-        "test_texts":test_texts,
-        "test_labels":test_labels,
+        "test_file":test_file,
         'model':model,
         'tfidf':tfidf
     }
@@ -38,15 +38,17 @@ def prepare_data_model(test_path,model_path,tfidf_path):
 
 def build_tfidf(data):
 
-    test_texts = data['test_texts']
-    test_labels = data['test_labels']
+    test_texts = data['test_file']['text'].tolist()
+    test_labels = data['test_file']['label'].tolist()
     tfidf = data['tfidf']
     model = data['model']
 
     # tfidf中的词表已经在训练集中训练好，这里只需测试集上编码就行
     test_features = tfidf.transform(test_texts)
 
+    '''把test_file拆成texts，labels。texts编码为features'''
     return {
+        "test_file":data['test_file'],
         "test_features": test_features,
         'test_labels':test_labels,
         'model':model,
@@ -82,10 +84,9 @@ def plot_confusion_matrix(labels,predictions,class_names,save_path):
     plt.close()
 
 
-from .train import evaluate
+from common.evaluate_f import evaluate
 def run_evaluate(data): # 只负责得到指标
 
-    tfidf = data['tfidf']
     model = data['model']
     test_features = data['test_features']
     test_labels = data['test_labels']
@@ -106,11 +107,7 @@ def run_evaluate(data): # 只负责得到指标
         "per_class": class_metrics
     }'''
 
-    # 画混淆矩阵
-    class_names = model.classes_.tolist()
-
-    plot_confusion_matrix(labels=test_labels,predictions=predictions,
-                          class_names=class_names,save_path=png_save_path)
+    # results
     return {
         'metrics':metrics,
         'predictions':predictions,
@@ -205,8 +202,8 @@ def save_error_cases(test_file,predictions,confidence,save_path):
     字段：text true_label predicted_label confidence possible_reason"""
     result_file = pd.DataFrame(
         {
-            'text': test_file['text'],
-            'true_label':test_file['label'],
+            'text': test_file['text'].tolist(),
+            'true_label':test_file['label'].tolist(),
             'predicted_label':predictions,
             'confidence':confidence
         }
@@ -214,6 +211,13 @@ def save_error_cases(test_file,predictions,confidence,save_path):
 
     # copy至期待的dataframe
     error_file = result_file[result_file['true_label'] != result_file['predicted_label']].copy()
+
+    if error_file.empty:
+        error_file["possible_reason"] = pd.Series(dtype="object")
+        error_file.to_csv(save_path,index=False,encoding="utf-8-sig")
+        print("测试集中没有预测错误的样本。")
+        return
+
     error_file['confidence'] = error_file['confidence'].round(4)
     error_file['possible_reason'] = error_file.apply(
         lambda row : get_possible_reason(text=row['text'],true_label=row['true_label'],
@@ -234,14 +238,14 @@ def save_error_cases(test_file,predictions,confidence,save_path):
 def main():
     data = prepare_data_model(test_path,model_path,tfidf_path)
     '''{
-        "test_texts":test_texts,
-        "test_labels":test_labels,
+        "test_file":test_file,dataframe形式的
         'model':model,
         'tfidf':tfidf
     }'''
 
     data = build_tfidf(data)
     '''{
+        "test_file":data['test_file'],
         "test_features": test_features,
         'test_labels':test_labels,
         'model':model,
@@ -261,12 +265,20 @@ def main():
         'predictions':predictions,
         'max_probability':max_probability
     }
-    并且画混淆矩阵'''
+    '''
+
+    # 画混淆矩阵
+    class_names = data['model'].classes_.tolist()
+    plot_confusion_matrix(labels=data['test_labels'],predictions=results['predictions'],
+                          class_names=class_names,save_path=png_save_path)
+
+
     save_results(results)
 
-    save_error_cases(test_file=pd.read_csv(test_path),predictions=results['predictions'],
+    save_error_cases(test_file=data['test_file'],predictions=results['predictions'],
                      confidence=results['max_probability'],save_path=error_file_path)
 
 
 if __name__ == '__main__':
     main()
+    print('test done')

@@ -31,89 +31,6 @@ def prepare_data(train_path,eval_path,test_path):
     }
 
 
-# 3.评价模型
-from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    accuracy_score,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    classification_report
-)
-def evaluate(labels,predictions):
-
-    # 1.计算整体指标
-    accuracy = accuracy_score(labels,predictions)
-    precision_macro = precision_score(labels,predictions,average="macro",zero_division=0)
-    recall_macro = recall_score(labels,predictions,average="macro",zero_division=0)
-    f1_macro = f1_score(labels,predictions,average="macro",zero_division=0)
-
-    '''它会计算每个类别的：
-        precision：预测成这个类别的样本中，有多少是真的
-        recall：真实属于这个类别的样本中，有多少被找出来了
-        f1-score：Precision 和 Recall 的综合指标
-        support：该类别真实样本数量'''
-
-    # 2. 得到每个类别的指标
-    '''{
-        "网络故障": {
-            "precision": 1.0,
-            "recall": 0.5,
-            "f1-score": 0.67,
-            "support": 2.0,
-        },
-        "费用问题": {
-            "precision": 0.67,
-            "recall": 1.0,
-            "f1-score": 0.8,
-            "support": 2.0,
-        },
-        "accuracy": 0.75,
-        "macro avg": {
-            "precision": 0.83,
-            "recall": 0.75,
-            "f1-score": 0.73,
-            "support": 4.0,
-            },
-        "weighted avg": {
-            "precision": 0.83,
-            "recall": 0.75,
-            "f1-score": 0.73,
-            "support": 4.0,
-        },
-       }'''
-    report = classification_report(
-        labels,
-        predictions,
-        output_dict=True,
-        zero_division=0,
-    )
-
-    '''做一遍搬运，只留下每个类别的值'''
-    class_metrics = {}
-    class_name = sorted(set(labels))
-    for c in class_name:
-        class_result = report[c]
-        class_metrics[c] = {
-            "precision": round(float(class_result["precision"]),4,),
-            "recall": round(float(class_result["recall"]),4),
-            "f1-score": round(float(class_result["f1-score"]),4),
-            "support": int(class_result["support"]), # 样本数
-        }
-
-    # 3. 整理完整评价结果
-    metrics = {
-        "accuracy": round(float(accuracy),4),
-        "precision_macro": round(float(precision_macro),4),
-        "recall_macro": round(float(recall_macro),4),
-        "f1_macro": round(float(f1_macro),4),
-        "per_class": class_metrics
-    }
-
-    return metrics
-
-
 # 4.训练过程,输入的data而不是路径
 def run_experiment(data,max_iter,random_state):
     '''data:
@@ -159,10 +76,16 @@ def run_experiment(data,max_iter,random_state):
 
     # 4.创建GridSearchCV
     grid_search_cv = GridSearchCV(estimator=pipeline,
-                               param_grid=params_range,# 使用宏平均F1选择最佳参数
-                               scoring="f1_macro",cv=predefined_split,n_jobs=-1,
-                               # 选择最佳参数后,不使用训练集 + 验证集重新训练最终模型
-                               refit=False)
+                            param_grid=params_range,# 使用宏平均F1选择最佳参数
+                            scoring={
+                                "f1_macro": "f1_macro",
+                                "accuracy": "accuracy",
+                            },
+                            #告诉grid_search_cv记录哪些指标，验证集的f1和准确率
+                            cv=predefined_split,n_jobs=-1,
+                            # 选择最佳参数后,不使用训练集 + 验证集重新训练最终模型
+                            refit="f1_macro",)
+                            #告诉grid_search_cv使用哪个指标来选择最佳参数
     
     # 5.开始寻找参数
     grid_search_cv.fit(X=search_texts,y=search_labels)
@@ -171,31 +94,20 @@ def run_experiment(data,max_iter,random_state):
     best_c = grid_search_cv.best_params_["model__C"]
     best_class_weight = grid_search_cv.best_params_["model__class_weight"]
     best_f1_score = grid_search_cv.best_score_
+    best_index = grid_search_cv.best_index_
+    best_eval_accuracy = grid_search_cv.cv_results_["mean_test_accuracy"][best_index]
 
-    # 7.使用最优超参数再次创建模型，进行一次train+eval训练
-    best_pipeline = Pipeline(steps=[('tfidf',TfidfVectorizer(analyzer='char',
-                                                        ngram_range=(1,2))),
-                               ('model',LogisticRegression(
-                                                            max_iter=max_iter,
-                                                            solver="lbfgs",
-                                                            random_state=random_state,
-                                                            C=best_c,
-                                                            class_weight=best_class_weight))])
-
-    '''因为确定了超参数，所以不需要GridSearchCV'''
-    best_pipeline.fit(X=search_texts,y=search_labels)
-
-    # 10.取模型和TF-IDF
-    best_tfidf = best_pipeline.named_steps["tfidf"]
-    best_model = best_pipeline.named_steps["model"]
+    # 7.取模型和TF-IDF
+    best_tfidf = grid_search_cv.best_estimator_.named_steps["tfidf"]
+    best_model = grid_search_cv.best_estimator_.named_steps["model"]
 
     return {
         'tfidf':best_tfidf,
-        'model':best_model,
-        'metrics':
-        {
-            'best_eval_f1_score':best_f1_score
+        'tfidf_conf':{
+            'analyzer':'char',
+            'ngram_range':(1,2)
         },
+        'model':best_model,        
         'model_conf':{
             'c-value':best_c,
             'class_weight':best_class_weight,
@@ -203,10 +115,12 @@ def run_experiment(data,max_iter,random_state):
             'solver':"lbfgs",
             'random_state':random_state,
         },
-        'tfidf_conf':{
-            'analyzer':'char',
-            'ngram_range':(1,2)
-        }
+        'metrics':
+        {
+            'best_eval_f1_score':best_f1_score,
+            'best_eval_accuracy':best_eval_accuracy
+
+        },
     }
 
 
@@ -291,4 +205,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    print('done')
+    print('train done')
