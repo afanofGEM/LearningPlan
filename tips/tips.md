@@ -80,6 +80,8 @@
                                     scoring="f1_macro",cv=predefined_split,n_jobs=-1,
                                     # 选择最佳参数后,使用训练集 + 验证集重新训练最终模型
                                     refit=True)
+   16. 关于随机数：
+         任意尺寸的标准正态torch.randn()
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：
