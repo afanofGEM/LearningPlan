@@ -1,0 +1,56 @@
+{
+  "total_samples": 1000,
+  "split_results": {
+    "train": {
+      "sample_count": 700,
+      "empty_text_count": 0,
+      "empty_label_count": 0,
+      "duplicate_ticket_id_count": 0
+    },
+    "valid": {
+      "sample_count": 150,
+      "empty_text_count": 0,
+      "empty_label_count": 0,
+      "duplicate_ticket_id_count": 0
+    },
+    "test": {
+      "sample_count": 150,
+      "empty_text_count": 0,
+      "empty_label_count": 0,
+      "duplicate_ticket_id_count": 0
+    }
+  },
+  "id_overlap": {
+    "train_valid_overlap": [],
+    "train_test_overlap": [],
+    "valid_test_overlap": []
+  },
+  "text_overlap": {
+    "train_valid_text_overlap": [],
+    "train_test_text_overlap": [],
+    "valid_test_text_overlap": []
+  },
+  "label_sets": {
+    "train_labels": [
+      "信号问题",
+      "套餐业务",
+      "投诉建议",
+      "网络故障",
+      "费用问题"
+    ],
+    "valid_labels": [
+      "信号问题",
+      "套餐业务",
+      "投诉建议",
+      "网络故障",
+      "费用问题"
+    ],
+    "test_labels": [
+      "信号问题",
+      "套餐业务",
+      "投诉建议",
+      "网络故障",
+      "费用问题"
+    ]
+  }
+}

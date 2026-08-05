@@ -82,6 +82,7 @@
                                     refit=True)
    16. 关于随机数：
          任意尺寸的标准正态torch.randn()
+         任意尺寸的范围整数text_ids = torch.randint(low=1,high=vocab_size,size=(8,32))
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：

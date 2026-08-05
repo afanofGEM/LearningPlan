@@ -52,6 +52,9 @@ stratify=dataframe["label"]
 
 从而保证实验可以复现，并尽量保持三个数据集中的类别比例一致。
 
+数据划分与检查的流程：
+check_data检查未划分的原始csv -> data_split划分数据 -> check_split分别检查各数据集
+
 ## 5. Baseline 模型
 
 Baseline 使用：
