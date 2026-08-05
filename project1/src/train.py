@@ -5,27 +5,27 @@ data_path = Path(__file__).parent.parent / 'data' / 'tickets_1000.csv'
 outputs_path = Path(__file__).parent.parent / 'outputs'
 outputs_path.mkdir(parents=True,exist_ok=True)
 train_path = Path(__file__).parent.parent / 'data' / 'train.csv'
-eval_path = Path(__file__).parent.parent / 'data' / 'eval.csv'
+valid_path = Path(__file__).parent.parent / 'data' / 'valid.csv'
 test_path = Path(__file__).parent.parent / 'data' / 'test.csv'
 
 import pandas as pd
-def prepare_data(train_path,eval_path,test_path):
+def prepare_data(train_path,valid_path,test_path):
     train_file = pd.read_csv(train_path)
-    eval_file = pd.read_csv(eval_path)
+    valid_file = pd.read_csv(valid_path)
     test_file = pd.read_csv(test_path)
 
     train_texts = train_file["text"].tolist()
     train_labels = train_file["label"].tolist()
-    eval_texts = eval_file["text"].tolist()
-    eval_labels = eval_file["label"].tolist()
+    valid_texts = valid_file["text"].tolist()
+    valid_labels = valid_file["label"].tolist()
     test_texts = test_file['text'].tolist()
     test_labels = test_file['label'].tolist()
 
     return {
         "train_texts": train_texts,
         "train_labels": train_labels,
-        "eval_texts": eval_texts,
-        "eval_labels": eval_labels,
+        "valid_texts": valid_texts,
+        "valid_labels": valid_labels,
         "test_texts":test_texts,
         "test_labels":test_labels
     }
@@ -37,8 +37,8 @@ def run_experiment(data,max_iter,random_state):
     {
         "train_texts": train_texts,
         "train_labels": train_labels,
-        "eval_texts": eval_texts,
-        "eval_labels": eval_labels,
+        "valid_texts": valid_texts,
+        "valid_labels": valid_labels,
         "test_texts":test_texts,
         "test_labels":test_labels
     }'''
@@ -46,11 +46,11 @@ def run_experiment(data,max_iter,random_state):
 
     # 1.GridSearCV的数据准备部分
     # 1.1 GridSearchCV需要完整的训练集+验证集
-    search_texts = data['train_texts'] + data['eval_texts']
-    search_labels = data['train_labels'] + data['eval_labels']
+    search_texts = data['train_texts'] + data['valid_texts']
+    search_labels = data['train_labels'] + data['valid_labels']
 
     # 1.2 GridSearchCV需要通过索引告诉它哪些是训练集，哪些是验证集
-    index = [-1] * len(data['train_texts']) + [0] * len(data['eval_texts'])
+    index = [-1] * len(data['train_texts']) + [0] * len(data['valid_texts'])
     from sklearn.model_selection import GridSearchCV,PredefinedSplit
     predefined_split = PredefinedSplit(index)
 
@@ -95,7 +95,7 @@ def run_experiment(data,max_iter,random_state):
     best_class_weight = grid_search_cv.best_params_["model__class_weight"]
     best_f1_score = grid_search_cv.best_score_
     best_index = grid_search_cv.best_index_
-    best_eval_accuracy = grid_search_cv.cv_results_["mean_test_accuracy"][best_index]
+    best_valid_accuracy = grid_search_cv.cv_results_["mean_test_accuracy"][best_index]
 
     # 7.取模型和TF-IDF
     best_tfidf = grid_search_cv.best_estimator_.named_steps["tfidf"]
@@ -117,8 +117,8 @@ def run_experiment(data,max_iter,random_state):
         },
         'metrics':
         {
-            'best_eval_f1_score':best_f1_score,
-            'best_eval_accuracy':best_eval_accuracy
+            'best_valid_f1_score':best_f1_score,
+            'best_valid_accuracy':best_valid_accuracy
 
         },
     }
@@ -149,12 +149,12 @@ def save_results(results):
          )
 
     # 3.保存验证集指标
-    eval_metrics_path = outputs_path / 'eval_metrics.json'
+    valid_metrics_path = outputs_path / 'valid_metrics.json'
     metrics = results['metrics']
-    with eval_metrics_path.open('w',encoding='utf-8') as eval_metrics_file:   
+    with valid_metrics_path.open('w',encoding='utf-8') as valid_metrics_file:   
          json.dump(
             metrics,
-            eval_metrics_file,
+            valid_metrics_file,
             ensure_ascii=False, # 写中文的格式
             indent=2,# 缩进2格
          )
@@ -172,12 +172,12 @@ def save_results(results):
 
 
 def main():
-    data = prepare_data(train_path,eval_path,test_path)
+    data = prepare_data(train_path,valid_path,test_path)
     '''{
         "train_texts": train_texts,
         "train_labels": train_labels,
-        "eval_texts": eval_texts,
-        "eval_labels": eval_labels,
+        "valid_texts": valid_texts,
+        "valid_labels": valid_labels,
         "test_texts":test_texts,
         "test_labels":test_labels
     }'''
