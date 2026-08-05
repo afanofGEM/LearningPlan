@@ -27,7 +27,7 @@ def prepare_data_model(test_path,model_path,tfidf_path):
     model = joblib.load(model_path)
     tfidf = joblib.load(tfidf_path)
 
-    '''train的prepare_data是返回list形式的train_texts/labels,eval_texts/labels
+    '''train的prepare_data是返回list形式的train_texts/labels,valid_texts/labels
     这里的prepare_data_model是返回dataframe形式的test_file,以及model和tfidf'''
     return {
         "test_file":test_file,
@@ -84,8 +84,8 @@ def plot_confusion_matrix(labels,predictions,class_names,save_path):
     plt.close()
 
 
-from common.evaluate_f import evaluate
-def run_evaluate(data): # 只负责得到指标
+from common.validuate_f import validuate
+def run_validuate(data): # 只负责得到指标
 
     model = data['model']
     test_features = data['test_features']
@@ -97,8 +97,8 @@ def run_evaluate(data): # 只负责得到指标
     probability = model.predict_proba(test_features) #预测每个类别的概率
     max_probability = probability.max(axis=1) # 找每行最大的列，就是对应类别的概率
 
-    '''调用train.py中的评价函数，只不过评价集从eval到test'''
-    metrics = evaluate(test_labels,predictions)
+    '''调用train.py中的评价函数，只不过评价集从valid到test'''
+    metrics = validuate(test_labels,predictions)
     '''{
         "accuracy": round(float(accuracy),4),
         "precision_macro": round(float(precision_macro),4),
@@ -252,7 +252,7 @@ def main():
         "tfidf": tfidf
     }'''
 
-    results = run_evaluate(data)
+    results = run_validuate(data)
     '''
     {
         'metrics':{
