@@ -10,7 +10,7 @@ plt.rcParams["font.sans-serif"] = [
 plt.rcParams["axes.unicode_minus"] = False
 
 #1. 准备数据
-outputs_path = Path(__file__).parent.parent / 'outputs'
+outputs_path = Path(__file__).parent.parent / 'outputs' / 'baseline'
 outputs_path.mkdir(parents=True,exist_ok=True)
 test_path = Path(__file__).parent.parent / 'data' / 'test.csv'
 model_path = outputs_path / "model.joblib"
@@ -84,7 +84,7 @@ def plot_confusion_matrix(labels,predictions,class_names,save_path):
     plt.close()
 
 
-from common.validuate_f import validuate
+from common.validuate_f import evaluate
 def run_validuate(data): # 只负责得到指标
 
     model = data['model']
@@ -98,7 +98,7 @@ def run_validuate(data): # 只负责得到指标
     max_probability = probability.max(axis=1) # 找每行最大的列，就是对应类别的概率
 
     '''调用train.py中的评价函数，只不过评价集从valid到test'''
-    metrics = validuate(test_labels,predictions)
+    metrics = evaluate(test_labels,predictions)
     '''{
         "accuracy": round(float(accuracy),4),
         "precision_macro": round(float(precision_macro),4),

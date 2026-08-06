@@ -8,6 +8,7 @@
       from torch.utils.data import DataLoader
    4. Linear和ReLU: import torch.nn as nn
    5. torch.optim.Adam
+      torch.optim.Adam(model.parameters(),lr = lr)
    6. 只有 pathlib.Path 对象才能调用 .open() 
       from pathlib import Path
    7. f1-score:
