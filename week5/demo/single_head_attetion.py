@@ -11,7 +11,7 @@ def scaled_dot_attention(Q,K,V,judge_padding):
     '''
 
     '''matmul矩阵乘法，transpose T
-        得到匹配分数'''
+        得到匹配分数(Token之间的注意力)'''
     match_scores = torch.matmul(Q,K.transpose(-2,-1))  #K:(batch_size,max_len,embedding_dim) -> (batch_Size,embedding_dim,max_len)
 
     '''缩放，防止softmax分布不均，梯度消失'''
@@ -55,7 +55,8 @@ def scaled_dot_attention(Q,K,V,judge_padding):
     [
         [[1,1,1,1,1,1,0]],
         [[1,0,1,1,0,1,0]]
-    ]'''
+    ] 为什么可以直接通过0来置换为-inf，使得softmax的值为0，
+      因为match_scores的每一行也是按照文本顺序排列的'''
 
     '''tensor.masked_fill(condition,value)
     含义是：对 condition 为 True 的位置，用 value 替换原来的数值
@@ -64,12 +65,12 @@ def scaled_dot_attention(Q,K,V,judge_padding):
                                                           float('-inf'))
 
     # 对最后一维，也就是每列的数据softmax,使得每行的数据和为1(某个Token对本句话所有Token关注为1)
-    scaled_match_scores = torch.softmax(scaled_match_scores,dim=-1)
+    attention_weight = torch.softmax(scaled_match_scores,dim=-1)
 
-    output = torch.matmul(scaled_match_scores,V)
+    output = torch.matmul(attention_weight,V)
     '''output:(batch_size, max_len, embedding_dim)'''
 
-    return scaled_match_scores,output
+    return attention_weight,output
 
 
 def main():
@@ -77,7 +78,7 @@ def main():
 
     batch_size = 3
     max_len = 10
-    embedding_dim = 5
+    embedding_dim = 8
 
     x =  torch.randn(batch_size,max_len,embedding_dim)
     Wq = torch.randn(embedding_dim,embedding_dim)
@@ -94,17 +95,17 @@ def main():
         [1,1,1,1,1,1,1,0,0,0]
     ])
 
-    scaled_match_scores,output = scaled_dot_attention(q,k,v,judge_padding)
+    attention_weight,output = scaled_dot_attention(q,k,v,judge_padding)
 
     print("X 形状：",x.shape)
     print("Q形状：",q.shape)
     print("K 形状：",k.shape)
     print("V 形状：",v.shape)
-    print("注意力权重(匹配分数)形状：",scaled_match_scores.shape)
+    print("注意力权重(匹配分数)形状：",attention_weight.shape)
     print("输出形状：",output.shape,)
     print("\n第一条工单中，" "第5个token的注意力权重(关注权重)：")
-    print(scaled_match_scores[0,4,:])
-    print("\n这组权重之和：",scaled_match_scores[0,4,:].sum())
+    print(attention_weight[0,4,:])
+    print("\n这组权重之和：",attention_weight[0,4,:].sum())
 
 
 if __name__ == "__main__":
