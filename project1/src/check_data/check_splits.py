@@ -9,7 +9,7 @@ import pandas as pd
 # =========================
 # 1. 路径与基础配置
 # =========================
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 DATA_DIR = (
     PROJECT_ROOT
@@ -18,7 +18,7 @@ DATA_DIR = (
 
 OUTPUT_DIR = (
     PROJECT_ROOT
-    / "outputs"
+    / "outputs" / "check_data"
 )
 
 TRAIN_PATH = (

@@ -180,7 +180,7 @@ def train_epochs(data,dropout,lr,num_epoch,choice_name):
             '''并不是找各个指标最优的，而是统计最佳模型的这仨指标'''
             best_epoch = epoch + 1
 
-            model_save_path = Path(__file__).parent.parent / 'outputs'/ 'mlp' / f'best_mlp_model_{choice_name}.pt'
+            model_save_path = Path(__file__).parent.parent.parent / 'outputs'/ 'mlp' / f'best_mlp_model_{choice_name}.pt'
             torch.save(model.state_dict(),model_save_path)
             '''第一次保存的并一定是最优的'''
 
@@ -200,7 +200,7 @@ def train_epochs(data,dropout,lr,num_epoch,choice_name):
 # 选择不同的超参数组合来进行多轮训练
 def train_with_different_params():
     #1.准备数据
-    from .csv_to_dataloader import prepare_data
+    from ..tool.csv_to_dataloader import prepare_data
     data = prepare_data(if_train=True)
 
     choices = [
@@ -261,7 +261,7 @@ def train_with_different_params():
                             dropout=dropout,
                             num_classes=num_classes)'''
     import json
-    best_model_conf_path = Path(__file__).parent.parent / "outputs" / 'mlp' / "best_mlp_model_config.json"
+    best_model_conf_path = Path(__file__).parent.parent.parent / "outputs" / 'mlp' / "best_mlp_model_config.json"
     with best_model_conf_path.open('w',encoding='utf-8') as best_model_file:   
         json.dump(
             best_model_conf,
@@ -271,7 +271,7 @@ def train_with_different_params():
         )
 
     #2.保存history
-    history_path = Path(__file__).parent.parent / "outputs" / 'mlp' / "mlp_history.json"
+    history_path = Path(__file__).parent.parent.parent / "outputs" / 'mlp' / "mlp_history.json"
     with history_path.open('w',encoding='utf-8') as history_file:   
         json.dump(
             best_result['history'],
@@ -281,12 +281,12 @@ def train_with_different_params():
         )
 
     #3.保存最佳模型，采用路径复制
-    best_model_path = Path(__file__).parent.parent / 'outputs' / 'mlp' / 'best_mlp_model.pt'
+    best_model_path = Path(__file__).parent.parent.parent / 'outputs' / 'mlp' / 'best_mlp_model.pt'
     import shutil
     shutil.copyfile(best_result['model_save_path'],best_model_path)
 
     #4.保存最优指标
-    best_index_path = Path(__file__).parent.parent / 'outputs' / 'mlp' / 'best_mlp_model_index.json'
+    best_index_path = Path(__file__).parent.parent.parent / 'outputs' / 'mlp' / 'best_mlp_model_index.json'
     with best_index_path.open('w',encoding='utf-8') as best_index_file:   
         json.dump(
             {

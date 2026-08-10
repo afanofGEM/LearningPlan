@@ -1,12 +1,13 @@
 from pathlib import Path
 
 #1. 准备数据
-data_path = Path(__file__).parent.parent / 'data' / 'tickets_1000.csv'
-outputs_path = Path(__file__).parent.parent / 'outputs' / 'baseline'
+project_path = Path(__file__).parent.parent.parent
+data_path = project_path / 'data' / 'tickets_1000.csv'
+outputs_path = project_path / 'outputs' / 'baseline'
 outputs_path.mkdir(parents=True,exist_ok=True)
-train_path = Path(__file__).parent.parent / 'data' / 'train.csv'
-valid_path = Path(__file__).parent.parent / 'data' / 'valid.csv'
-test_path = Path(__file__).parent.parent / 'data' / 'test.csv'
+train_path = project_path / 'data' / 'train.csv'
+valid_path = project_path / 'data' / 'valid.csv'
+test_path = project_path / 'data' / 'test.csv'
 
 import pandas as pd
 def prepare_data(train_path,valid_path,test_path):

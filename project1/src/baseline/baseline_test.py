@@ -10,9 +10,10 @@ plt.rcParams["font.sans-serif"] = [
 plt.rcParams["axes.unicode_minus"] = False
 
 #1. 准备数据
-outputs_path = Path(__file__).parent.parent / 'outputs' / 'baseline'
+project_path = Path(__file__).parent.parent.parent
+outputs_path = project_path / 'outputs' / 'baseline'
 outputs_path.mkdir(parents=True,exist_ok=True)
-test_path = Path(__file__).parent.parent / 'data' / 'test.csv'
+test_path = project_path / 'data' / 'test.csv'
 model_path = outputs_path / "model.joblib"
 tfidf_path = outputs_path / "tfidf.joblib"
 png_save_path = outputs_path / 'confusion_matrix.png'

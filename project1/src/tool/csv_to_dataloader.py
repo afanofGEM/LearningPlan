@@ -1,10 +1,15 @@
 from pathlib import Path
-data_path = Path(__file__).parent.parent / 'data'
+import json
+
+data_path = Path(__file__).parent.parent.parent / 'data'
 dataframe_path = data_path / 'tickets_1000.csv'
 trainframe_path = data_path / 'train.csv'
 validframe_path = data_path / 'valid.csv'
 testframe_path = data_path / 'test.csv'
-max_len = 20
+max_len_path = Path(__file__).parent.parent.parent / "outputs" /"decide_max_len" / "max_len.json"
+
+with max_len_path.open('r',encoding='utf-8') as file:
+    max_len = int(json.load(file)["max_len"])
 batch_size = 8
 
 #1. 读取数据

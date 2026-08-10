@@ -2,16 +2,18 @@ from sklearn.model_selection import train_test_split
 from pathlib import Path
 
 # 1.设置路径
-data_path = Path(__file__).parent.parent / 'data' / 'tickets_1000.csv'
-csv_path = Path(__file__).parent.parent / 'data'
-outputs_path = Path(__file__).parent.parent / 'outputs'
+project_path = Path(__file__).parent.parent.parent
+data_path = project_path / 'data' / 'tickets_1000.csv'
+csv_path = project_path / 'data'
+outputs_path = project_path / 'outputs'
 outputs_path.mkdir(parents=True,exist_ok=True)
+check_data_path = outputs_path / "check_data"
 train_csv_path = csv_path / 'train.csv'
 valid_csv_path = csv_path / 'valid.csv'
 test_csv_path = csv_path / 'test.csv'
-train_distribution_csv_path = outputs_path / 'train_distribution.csv'
-valid_distribution_csv_path = outputs_path / 'valid_distribution.csv'
-test_distribution_csv_path = outputs_path / 'test_distribution.csv'
+train_distribution_csv_path = check_data_path / 'train_distribution.csv'
+valid_distribution_csv_path = check_data_path / 'valid_distribution.csv'
+test_distribution_csv_path = check_data_path / 'test_distribution.csv'
 
 # 2.准备数据集
 test_size = 0.3

@@ -43,13 +43,9 @@
          model.load_state_dict(dict)
    8. json加载：
          vocab_json_path = Path("../outputs/vocab.json")
-         label_to_id_json_path = Path("../outputs/label_to_id.json")
-
          with vocab_json_path.open('r',encoding='utf-8') as file:
             char_to_id = json.load(file)
 
-         with label_to_id_json_path.open('r',encoding='utf-8') as file:
-            label_to_id = json.load(file)
    9. 构造rnn:
          rnn = nn.RNN(input_size=embedding_dim,hidden_size=hidden_size,
                   num_layers=3,batch_first=True,

@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 import pandas as pd
 
-project_root = Path(__file__).resolve().parent.parent
+project_root = Path(__file__).resolve().parent.parent.parent
 data_path = (project_root/"data"/"tickets_1000.csv")
-output_dir = (project_root/"outputs")
+output_dir = (project_root/"outputs"/"check_data")
 class_distribution_path = (output_dir/"class_distribution.csv")
 text_lengths_path = (output_dir/"text_lengths.csv")
 duplicate_texts_path = (output_dir/"duplicate_texts.csv")
