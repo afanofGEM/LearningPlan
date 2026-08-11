@@ -45,6 +45,7 @@ def build_tfidf(data):
     model = data['model']
 
     # tfidf中的词表已经在训练集中训练好，这里只需测试集上编码就行
+    '''test_features:(len(test_texts),num_features)'''
     test_features = tfidf.transform(test_texts)
 
     '''把test_file拆成texts，labels。texts编码为features'''

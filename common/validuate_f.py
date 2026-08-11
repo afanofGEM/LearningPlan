@@ -7,6 +7,10 @@ from sklearn.metrics import (
     recall_score,
     classification_report
 )
+import matplotlib.pyplot as plt
+plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 def evaluate(labels,predictions):
 
     # 1.计算整体指标
@@ -60,7 +64,7 @@ def evaluate(labels,predictions):
     class_metrics = {}
     class_name = sorted(set(labels))
     for c in class_name:
-        class_result = report[c]
+        class_result = report[str(c)]
         class_metrics[c] = {
             "precision": round(float(class_result["precision"]),4,),
             "recall": round(float(class_result["recall"]),4),
@@ -78,3 +82,28 @@ def evaluate(labels,predictions):
     }
 
     return metrics
+
+
+def plot_confusion_matrix(labels, predictions, class_names, save_path):
+    # labels/predictions 使用整数类别 ID
+    class_ids = list(range(len(class_names)))
+
+    matrix = confusion_matrix(
+        y_true=labels,
+        y_pred=predictions,
+        labels=class_ids
+    )
+
+    display = ConfusionMatrixDisplay(
+        confusion_matrix=matrix,
+        display_labels=class_names
+    )
+
+    display.plot(values_format="d", xticks_rotation=30)
+
+    plt.xlabel("预测类别")
+    plt.ylabel("真实类别")
+    plt.title("测试集混淆矩阵")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()

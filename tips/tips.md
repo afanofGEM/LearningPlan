@@ -27,6 +27,7 @@
    3. 计算梯度：loss.backward()
    4. 更新参数: opti.step()
    5. 模型保存: torch.save(model.state_dict(),'../outputs/model.pt')
+
    6. json保存：
          vocab_path = Path('../outputs/vocab.json')
          with vocab_path.open('w',encoding='utf-8') as file:   
@@ -36,15 +37,26 @@
             ensure_ascii=False, # 写中文的格式
             indent=2,# 缩进2格
          )
-   7. 模型加载：先加载字典，再使用定义好的模型接受
-         model_path = Path("../outputs/model.pt")
-         dict = torch.load(model_path)
-         '''用模型接受参数'''
-         model.load_state_dict(dict)
-   8. json加载：
-         vocab_json_path = Path("../outputs/vocab.json")
-         with vocab_json_path.open('r',encoding='utf-8') as file:
-            char_to_id = json.load(file)
+
+   7. json加载：
+      vocab_json_path = Path("../outputs/vocab.json")
+      with vocab_json_path.open('r',encoding='utf-8') as file:
+         char_to_id = json.load(file)
+
+   8. 模型加载：
+      with best_model_conf_path.open('r',encoding='utf-8') as best_model_conf_file:
+         best_model_conf = json.load(best_model_conf_file)
+
+      best_model = TicketClassifierMLP(vocab_size=best_model_conf['vocab_size'],
+                                       embedding_dim=best_model_conf['embedding_dim'],
+                                       padding_id=best_model_conf['padding_id'],
+                                       hidden_dim=best_model_conf['hidden_dim'],
+                                       dropout=best_model_conf['dropout'],
+                                       num_classes=best_model_conf['num_classes'])
+
+      dict = torch.load(best_model_path)
+      '''用模型接受参数'''
+      best_model.load_state_dict(dict)
 
    9. 构造rnn:
          rnn = nn.RNN(input_size=embedding_dim,hidden_size=hidden_size,
