@@ -15,6 +15,7 @@ class MultiHeadAttention(nn.Module):
         self.output_to_o = nn.Linear(embedding_dim,embedding_dim)
         self.num_heads = num_heads
         self.head_dim = head_dim
+        self.embedding_dim = embedding_dim
 
 
     def split_heads(self,matrix):
@@ -104,8 +105,6 @@ class PositionEncoding(nn.Module):
         optimizer 不更新'''
 
     def forward(self, x):
-        max_len = x.size(1)
-
         return x + self.position_encoding
 
 
@@ -136,21 +135,22 @@ class EncoderBlock(nn.Module):
         super().__init__()
         self.self_multi_head_attention = MultiHeadAttention(embedding_dim,num_heads,head_dim)
         self.ffn = FeedForwardNetwork(embedding_dim,hidden_dim)
-        self.layernorm = nn.LayerNorm(embedding_dim)
+        self.layernorm1 = nn.LayerNorm(embedding_dim)
+        self.layernorm2 = nn.LayerNorm(embedding_dim)
         self.dropout = nn.Dropout(dropout)
 
 
     def forward(self,x,mask):
-        attention_weight,attention_output = self.self_multi_head_attention(x,mask)
+        attention_weight,attention_output = self.self_multi_head_attention(input_q=x,input_k=x,input_v=x,mask=mask)
 
         '''经典 Transformer：Post-Norm'''
-        x = self.layernorm(x + self.dropout(attention_output))
+        x = self.layernorm1(x + self.dropout(attention_output))
 
         ffn = self.ffn(x)
 
         '''Post-norm:x=LayerNorm(x+Attention(x))
         Pre-norm:x=x+LayerNorm(Attention(x))'''
-        x = self.layernorm(x + self.dropout(ffn))
+        x = self.layernorm2(x + self.dropout(ffn))
         return x,attention_weight
 
 
@@ -162,39 +162,42 @@ class DecoderBlock(nn.Module):
         super().__init__()
         self.self_attention = MultiHeadAttention(embedding_dim,num_heads,head_dim)
         self.cross_attention = MultiHeadAttention(embedding_dim,num_heads,head_dim)
-        self.norm = nn.LayerNorm(embedding_dim)
+        self.layernorm1 = nn.LayerNorm(embedding_dim)
+        self.layernorm2 = nn.LayerNorm(embedding_dim)
+        self.layernorm3 = nn.LayerNorm(embedding_dim)
         self.dropout = nn.Dropout(drop_out)
         self.ffn = FeedForwardNetwork(embedding_dim,hidden_dim)
 
 
-    def forward(self,x,mask,encoder_output):
+    def forward(self,x,self_attetion_mask,cross_attetion_mask,encoder_output):
         '''x是截止目前Decoder输入的内容，比如中文译文
         x:(batch_size,decoder_len,embedding_dim)'''
 
         '''1.先进行self-attention，先融合其他token的信息'''
         self_attention_weight,self_attention_output = self.self_attention(
-            input_q=x,input_k=x,input_v=x,mask=mask
+            input_q=x,input_k=x,input_v=x,mask=self_attetion_mask
         )
         '''batch_size,decoder_len,embedding'''
 
         '''2.再进行post-norm，加工融合后的信息'''
-        x = self.norm(x + self.dropout(self_attention_output))
+        x = self.layernorm1(x + self.dropout(self_attention_output))
 
         '''截止目前：我自己已经生成了什么，
         因为这里的self-attention是为了融合已经生成的token，所以mask是一个下三角矩阵
         实际意义就是看不到自身以后得token'''
 
         cross_attention_weight,cross_attention_output = self.cross_attention(
-                    input_q=x,input_k=encoder_output,input_v=encoder_output,mask=mask
+                    input_q=x,input_k=encoder_output,input_v=encoder_output,
+                    mask=cross_attetion_mask
                 )
         '''cross_attention_output:(batch_size,decoder_len,max_len)'''
         '''根据我已经生成到这里，原文中我现在应该关注什么'''
         
-        x = self.norm(x + self.dropout(cross_attention_output))
+        x = self.layernorm2(x + self.dropout(cross_attention_output))
 
         ffn = self.ffn(x)
 
-        x = self.norm(x + self.dropout(ffn))
+        x = self.layernorm3(x + self.dropout(ffn))
 
         return x,self_attention_weight,cross_attention_weight
 
@@ -246,7 +249,7 @@ class Decoder(nn.Module):
         ])
 
 
-    def forward(self,input_ids,mask,encoder_output):
+    def forward(self,input_ids,self_attetion_mask,cross_attetion_mask,encoder_output):
         x = self.token_embedding(input_ids)
 
         # 原始 Transformer 会乘 sqrt(d_model)
@@ -254,15 +257,170 @@ class Decoder(nn.Module):
 
         # Position Embedding
         x = self.position_embedding(x)
+        x = self.dropout(x)
 
         self_attention_weights_list = []
         cross_attention_weights_list = []
 
         for decoder_block in self.layers:
-            x,self_attention_weight,cross_attention_weight = decoder_block(x,mask,encoder_output)
+            x,self_attention_weight,cross_attention_weight = decoder_block(
+                x,self_attetion_mask,cross_attetion_mask,encoder_output)
+        
             self_attention_weights_list.append(self_attention_weight)
             cross_attention_weights_list.append(cross_attention_weight)
 
         return x,self_attention_weights_list,cross_attention_weights_list
 
 
+class ClassicTransformer(nn.Module):
+    def __init__(self,encoder_vocab_size,decoder_vocab_size,embedding_dim,
+                 max_len,dropout,num_heads,hidden_dim,num_layers,padding_id):
+        '''encoder_vocab_size理解成中文词典大小 decoder_vocab_size是英文词典大小
+        max_len是中文的句子长度 max_len是英文句子长度'''
+
+        assert embedding_dim % num_heads == 0
+        head_dim = embedding_dim // num_heads #返回整数
+
+        super().__init__()
+        self.padding_id = padding_id
+        self.encoder = Encoder(encoder_vocab_size,embedding_dim,
+                               max_len,dropout,num_heads,
+                               head_dim,hidden_dim,num_layers)
+        self.decoder = Decoder(decoder_vocab_size,embedding_dim,
+                               max_len,dropout,num_heads,
+                               head_dim,hidden_dim,num_layers)
+        self.decoder_output_to_output = nn.Linear(embedding_dim,
+                                                  decoder_vocab_size)
+
+
+    def padding_mask(self,input_ids):
+        '''input_ids:(batch_size,max_len)'''
+
+        judge_padding = input_ids != self.padding_id
+        '''judge_padding:(batch_size,max_len)，元素是0/1'''
+
+        judge_padding = judge_padding.unsqueeze(1).unsqueeze(2)
+        '''judge_padding:(batch_size,1,1,max_len)
+        因为encoder中的Q*K^T是(batch_size,num_heads,max_len,max_len)
+        所以可以广播judge_padding来屏蔽padding'''
+
+        return judge_padding
+
+
+    def padding_causal_mask(self,input_ids):
+        max_len = input_ids.size(1)
+
+        judge_padding = input_ids != self.padding_id
+        judge_padding = judge_padding.unsqueeze(1).unsqueeze(2)
+
+        '''取一个下三角矩阵，屏蔽后文'''
+        causal_mask = torch.tril(
+            torch.ones(max_len,max_len,dtype=torch.bool))
+        causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)
+
+        '''causal_mask(1,1,max_len,max_len)
+        因为decoder中self-attention的Q*K^T是
+        (batch_size,num_heads,max_len,max_len)
+        所以可以通过广播causal_mask来屏蔽后文'''
+
+        return judge_padding & causal_mask
+
+
+    def forward(self,encoder_input_ids,decoder_input_ids):
+        encoder_self_attetion_mask = self.padding_mask(encoder_input_ids)
+        decoder_self_attetion_mask = self.padding_causal_mask(decoder_input_ids)
+        decoder_cross_attention_mask = self.padding_mask(encoder_input_ids)
+        '''因为decoder中cross-attention的Q*K^T是
+        (batch_size,num_heads,max_len,max_len)
+        而且采用padding mask所以可以使用
+        和encoder中相同的padding mask'''
+
+        encoder_output,encoder_self_attention_weights_list = self.encoder(
+            encoder_input_ids,encoder_self_attetion_mask)
+        '''encoder_output:[batch, max_len, embedding_dim]'''
+
+        decoder_output,decoder_self_attention_weights_list,decoder_cross_attention_weights_list = self.decoder(
+            decoder_input_ids,decoder_self_attetion_mask,
+                     decoder_cross_attention_mask,encoder_output)
+
+        output = self.decoder_output_to_output(decoder_output)
+        '''output:[batch, max_len, decoder_vocab_size]'''
+
+        return {
+            "logits": output,
+            "encoder_output": encoder_output,
+            "decoder_output": decoder_output,
+            "encoder_self_attention_weights_list": encoder_self_attention_weights_list,
+            "decoder_self_attention_weights_list": decoder_self_attention_weights_list,
+            "decoder_cross_attention_weights_list": decoder_cross_attention_weights_list,
+        }
+
+
+if __name__ == "__main__":
+
+    torch.manual_seed(15)
+
+    embedding_dim = 12
+    num_heads = 3
+    hidden_dim = 48
+
+    encoder_vocab_size = 100
+    decoder_vocab_size = 120
+
+    # ========================================================
+    # Encoder 输入
+    #
+    # 第一条：
+    # I love basketball PAD PAD
+    #
+    # 第二条：
+    # You like playing basketball PAD
+    # ========================================================
+    encoder_input_ids = torch.tensor([
+        [11, 25, 36, 0, 0, 0],
+        [14, 27, 31, 36, 0, 0],
+    ])
+
+    # ========================================================
+    # Decoder 输入
+    #
+    # 例如：
+    #
+    # <BOS> 我 喜欢 篮球
+    # ========================================================
+    decoder_input_ids = torch.tensor([
+        [1, 41, 52, 63, 0, 0],
+        [1, 42, 53, 63, 0, 0],
+    ])
+
+    max_len = 6
+    dropout=0.0
+    num_layers=2
+    padding_id = 0
+    model = ClassicTransformer(encoder_vocab_size,decoder_vocab_size,
+                               embedding_dim,max_len,dropout,num_heads,
+                               hidden_dim,num_layers,padding_id)
+
+    result = model(encoder_input_ids, decoder_input_ids)
+
+    print("encoder_input_ids:", encoder_input_ids.shape)
+    print("decoder_input_ids:", decoder_input_ids.shape)
+
+    print("encoder_output:", result["encoder_output"].shape)
+    print("decoder_output:", result["decoder_output"].shape)
+    print("logits:", result["logits"].shape)
+
+    print(
+        "encoder_self_attention_weights_list:",
+        result["encoder_self_attention_weights_list"][0].shape,
+    )
+
+    print(
+        "decoder_self_attention_weights_list:",
+        result["decoder_self_attention_weights_list"][0].shape,
+    )
+
+    print(
+        "decoder_cross_attention_weights_list:",
+        result["decoder_cross_attention_weights_list"][0].shape,
+    )
