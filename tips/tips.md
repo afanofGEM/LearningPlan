@@ -92,6 +92,11 @@
    16. 关于随机数：
          任意尺寸的标准正态torch.randn()
          任意尺寸的范围整数text_ids = torch.randint(low=1,high=vocab_size,size=(8,32))
+   
+   17. Hugging Face创建官方中文Tokenizer：
+   from transformers import AutoTokenizer
+   MODEL_NAME = "google-bert/bert-base-chinese"
+   tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：
