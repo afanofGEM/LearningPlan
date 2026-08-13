@@ -48,6 +48,7 @@ for index, text in enumerate(texts): #enumerate就会多一个索引值
 
     '''每条文本的id'''
     input_ids = encoded["input_ids"][index]
+    print(input_ids.shape)
 
     '''每条文本的所有Token'''
     tokens = tokenizer.convert_ids_to_tokens(input_ids)
@@ -58,7 +59,7 @@ for index, text in enumerate(texts): #enumerate就会多一个索引值
         skip_special_tokens=False,
     )
 
-    print(f"\n原始文本：{text}")
+    print(f"原始文本：{text}")
     print(f"tokens：{tokens}")
     print(f"input_ids：{input_ids}")
     print(f"attention_mask：{encoded['attention_mask'][index]}")

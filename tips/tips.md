@@ -98,6 +98,14 @@
    MODEL_NAME = "google-bert/bert-base-chinese"
    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
+   18. Hugging Face创建带分类器的BERT模型：
+   MODEL_NAME = "google-bert/bert-base-chinese"
+   from transformers import AutoModelForSequenceClassification
+   model = AutoModelForSequenceClassification.from_pretrained(
+      MODEL_NAME,
+      num_labels=5,
+   )
+
 3. 修改vscode的运行目录：
    1. 让终端默认在当前Python文件所在目录运行：
       可以打开 VS Code 设置，搜索：
